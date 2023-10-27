@@ -3043,3 +3043,14 @@
     - research
     - datasets
     - guide
+
+- local: lora-adapters-dynamic-loading
+  title: "Loading LoRA adapters on the fly to serve inference for all of them at once on the Hugging Face Hub."
+  author: raphael-gl
+  thumbnail: /blog/assets/169_load_lora_adapters/thumbnail.png
+  date: November 02, 2023
+  tags:
+    - diffusers
+    - lora
+    - models
+    - inference

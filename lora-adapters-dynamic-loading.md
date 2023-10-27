@@ -31,7 +31,7 @@ So in an inference service, if we are able to keep the base model "warm" and we 
 
 On the Hub, LoRA adapters can be identified with two attributes:
 
-![Hub](assets/169_lora_load_offload/lora_adapter_hub2.jpg)
+![Hub](assets/169_lora_load_offload/lora_adapter_hub2.png)
 
 ## Loading/Offloading LoRA adapters for Diffusers 🧨
 

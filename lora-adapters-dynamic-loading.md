@@ -13,7 +13,7 @@ We used these features to speed up inference on the Hub for requests related to 
 
 For a more exhaustive presentation on what LoRA is, please refer to the following blog post:
 
-![Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora)
+[Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora)
 
 # How does it work ?
 
@@ -31,7 +31,7 @@ So in an inference service, if we are able to keep the base model "warm" and we 
 
 On the Hub, LoRA adapters can be identified with two attributes:
 
-[screenshots/lora1.jpg]
+![Hub](assets/169_lora_load_offload/lora_adapter_hub2.jpg)
 
 ## Loading/Offloading LoRA adapters for Diffusers 🧨
 

@@ -173,6 +173,4 @@ So at the cost of 2 to 3 additional seconds per inference, we can serve many dis
 
 # Conclusion: win-win situation
 
-By mutualizing LoRA pods on Api Inference we
-
-Despite this extra cost, the user experience is better as we do not have to spawn a new serving stack for every model we serve on Api Inference.
+By mutualizing LoRA pods on Api Inference we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra cost added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is already up and running made the whole inference time response far shorter. On classical model (except for the most often requested) models are started/warmed up on the first request, causing the response time to be slower.

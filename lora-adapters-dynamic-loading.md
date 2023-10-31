@@ -31,7 +31,7 @@ We implemented LoRA mutualization on the Hugging Face Inference Api. When a requ
 
 On the Hub, LoRA adapters can be identified with two attributes:
 
-![Hub](assets/169_lora_load_offload/lora_adapter_hub2.png)
+![Hub](assets/169_lora_load_offload/lora_adapter_hub.png)
 
 A LoRA adapter will have a ```base_model``` attribute. This is simply the model which the LoRA adapter was built for and should be applied to when performing inference.
 

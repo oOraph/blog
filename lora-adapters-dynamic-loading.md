@@ -178,6 +178,37 @@ You can find the previously described mechanism used in the [TextToImagePipeline
 
 When a LoRA adapter is requested we look at the one that is loaded, if any, and change it only if required, then we perform inference as usual. This way, with the same service we are able to serve requests for the base model and many distinct adapters.
 
+We show below an example on how you can test and request this image
+
+```
+$ git clone https://github.com/huggingface/api-inference-community.git
+
+$ cd api-inference-community/docker_images/diffusers
+
+$ docker build -t test:1.0 -f Dockerfile .
+
+$ cat > /tmp/env_file <<'EOF'
+MODEL_ID=stabilityai/stable-diffusion-xl-base-1.0
+TASK=text-to-image
+HF_HUB_ENABLE_HF_TRANSFER=1
+EOF
+
+$docker run --gpus all --rm --name test1 --env-file /tmp/env_file_minimal -p 8888:80 -it test:1.0
+```
+
+Then in another terminal perform requests to the base model and/or miscellaneous LoRA adapters to be found on the HF Hub.
+
+```
+# Request the base model
+$ curl 0:8888 -d '{"inputs": "elephant", "parameters": {"num_inference_steps": 20}}' > /tmp/base.jpg
+
+# Request one adapter
+$ curl -H 'lora: minimaxir/sdxl-wrong-lora' 0:8888 -d '{"inputs": "elephant", "parameters": {"num_inference_steps": 20}}' > /tmp/adapter1.jpg
+
+# Request another one
+$ curl -H 'lora: nerijs/pixel-art-xl' 0:8888 -d '{"inputs": "elephant", "parameters": {"num_inference_steps": 20}}' > /tmp/adapter2.jpg
+```
+
 # Conclusion: win-win situation
 
 By mutualizing LoRA pods on the Inference Api, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response far shorter. On classical model models are started/warmed up on the first request, causing the response time to be slower if you are requested a model that is not requested that often.

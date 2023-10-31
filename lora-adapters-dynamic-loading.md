@@ -5,8 +5,6 @@ authors:
 - user: raphael-gl
 ---
 
-# Goal
-
 We want to show how one can leverage some features developped in the [Diffusers](https://github.com/huggingface/diffusers/) library to serve many distinct LoRA adapters in a dynamic fashion, with a single service.
 
 We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.
@@ -17,17 +15,17 @@ For a more exhaustive presentation on what LoRA is, please refer to the followin
 
 [Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora)
 
+Or refer directly to the [original paper](https://arxiv.org/abs/2106.09685).
+
 LoRA is one of the many existing fine-tuning techniques.
 
-Instead of fine-tuning by performing tiny changes to all the weights of a model checkpoint, we train it by freezing most of its layers and only training a few weights, in specific layers, whose values are extracted and kept aside, for a later "transplantation"/reload. This trainable weights compose the LoRA adapter.
+Instead of fine-tuning by performing tiny changes to all the weights of a model checkpoint, we train it by freezing most of its layers and only tuning a few weights, in specific layers, whose values are extracted and kept aside, for a later "transplantation"/reload. This trainable weights compose the LoRA adapter.
 
-In other words, it is like an add-on of a base model. And because it is light relatively to the latter size, loading it should be significantly faster than loading the whole base model.
-
-So in an inference service, if we are able to keep the base model "warm" and we only have to load/offload these extensions, we can then reuse the same compute resources to serve many distinct models at once.
+In other words, it is like an add-on of a base model. And because it is light relatively to the latter size, loading it should be faster than loading the whole base model.
 
 # Implementation details
 
-We implemented LoRA mutualization on the Hugging Face Inference Api. When a request is performed on a model available in the platform, we first determine whether this is a LoRA adapter or not. Once done, we identify the base model for this adapter and route the request to a common backend farm, able to serve requests for the said model. This backend farm serves inference requests by keeping the base model warm and loading/unloading LoRA adapters on the fly.
+We implemented LoRA mutualization on the Hugging Face Inference Api. When a request is performed on a model available in the platform, we first determine whether this is a LoRA adapter or not. Once done, we identify the base model for this adapter and route the request to a common backend farm, able to serve requests for the said model. Inference requests get served by keeping the base model warm and loading/unloading LoRA adapters on the fly. This way, we can then reuse the same compute resources to serve many distinct models at once.
 
 ## LoRA adapters structure on the Hub
 
@@ -35,20 +33,21 @@ On the Hub, LoRA adapters can be identified with two attributes:
 
 ![Hub](assets/169_lora_load_offload/lora_adapter_hub2.png)
 
-A LoRA adapter will have a base_model attribute: this is simply the model which the LoRA adapter was built for and should be applied to when performing inference.
+A LoRA adapter will have a ```base_model``` attribute. This is simply the model which the LoRA adapter was built for and should be applied to when performing inference.
 
-And because LoRA adapters are not the only models with a base_model attribute, for a LoRA adapter to be properly identified, it also needs a LoRA tag.
+And because LoRA adapters are not the only models with such an attribute (any duplicated model have it too), for a LoRA adapter to be properly identified, it also needs a ```lora``` tag.
 
 So if you want a LoRA adapter to be served as such on the HF Inference Api platform, make sure these attributes are correctly set.
 
 ## Loading/Offloading LoRA adapters for Diffusers 🧨
 
-We provide below an example showing how one can leverage the Diffusers library to quickly load several LoRA adapters on top of a base model
-
-Basically 4 functions are used in the Diffusers lib to load distinct LoRA adapters:
+4 functions are used in the Diffusers lib to load and unload distinct LoRA adapters:
 
 ```load_lora_weights``` and ```fuse_lora``` for loading and merging weights with the main layers. Note that merging weights with the main model before performing inference can decrease the inference time by 30 %.
 
+```unload_lora_weights``` and ```unfuse_lora``` for unloading the adapter.
+
+We provide below an example showing how one can leverage the Diffusers library to quickly load several LoRA adapters on top of a base model
 
 ```
 import torch
@@ -169,8 +168,16 @@ Number units is seconds
   </tr>
 </table>
 
-So at the cost of 2 to 3 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G, the inference time decreases by a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
+So at the cost of 2 to 4 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G GPU, the inference time decreases by a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
+
+# Serving inference requests
+
+To serve requests, we use the opensource community image [here](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
+
+You can find the previously described mechanism used in the [TextToImagePipeline](https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/app/pipelines/text_to_image.py) class
+
+When a LoRA adapter is requested we look at the one that is loaded, if any, and change it only if required, then we perform inference as usual. This way, with the same service we are able to serve requests for the base model and many distinct adapters.
 
 # Conclusion: win-win situation
 
-By mutualizing LoRA pods on Api Inference we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra cost added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is already up and running made the whole inference time response far shorter. On classical model (except for the most often requested) models are started/warmed up on the first request, causing the response time to be slower.
+By mutualizing LoRA pods on the Inference Api, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response far shorter. On classical model models are started/warmed up on the first request, causing the response time to be slower if you are requested a model that is not requested that often.

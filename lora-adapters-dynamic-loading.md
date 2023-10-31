@@ -123,7 +123,7 @@ inference(adapter2, weightname2)
 
 Results:
 
-Number units is seconds
+All numbers below are in seconds
 
 <table>
   <tr>

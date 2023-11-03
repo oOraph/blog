@@ -26,6 +26,8 @@ LoRA is one of the many existing fine-tuning techniques.
 
 Instead of fine-tuning by performing tiny changes to all the weights of a model checkpoint, we train it by freezing most of its layers and only tuning a few specific ones in the attention blocks. Besides, the weights in these layers are not tuned independently from one another: they are tuned by adding to the original values the result of the product between two smaller matrices (hence the name, LoRA for Lower Rank Adaptation). These matrices are extracted and kept aside, for a later "transplantation"/reload. This trainable weights compose the LoRA adapter.
 
+<div id="diagram"></div>
+
 ![LoRA decomposition](assets/169_load_lora_adapters/lora_diagram.png)
 
 As an example, in the diagram above the two smaller orange matrices would be kept in the LoRA adapter. Then, later, from the blue base model, you can obtain the adapted yellow one (load the lora adapter), and same in the other direction (unload it).
@@ -65,6 +67,13 @@ And because LoRA adapters are not the only models with such an attribute (any du
 So if you want a LoRA adapter to be served as such on the HF Inference Api platform, make sure these attributes are correctly set.
 
 ## Loading/Offloading LoRA adapters for Diffusers 🧨
+
+<div class="alert" style="background-color:lightgreen">
+<p>
+Note that there is a more seemless way to perform the same as what is presented in this section using the <a href="https://github.com/huggingface/peft">peft</a> library. Please refer to <a href="]https://huggingface.co/docs/diffusers/main/en/tutorials/using_peft_for_inference">the documentation</a> for more details. The principle remains the same as below though (going from/to the blue box to/from the yellow one in the <a href="#diagram">diagram</a> above)
+</p>
+</div>
+</br>
 
 4 functions are used in the Diffusers lib to load and unload distinct LoRA adapters:
 
@@ -234,6 +243,6 @@ $ curl -H 'lora: minimaxir/sdxl-wrong-lora' 0:8888 -d '{"inputs": "elephant", "p
 $ curl -H 'lora: nerijs/pixel-art-xl' 0:8888 -d '{"inputs": "elephant", "parameters": {"num_inference_steps": 20}}' > /tmp/adapter2.jpg
 ```
 
-# Conclusion: win-win situation
+# Conclusion: benefits for users and hub maintainers
 
 By mutualizing pods on the Inference Api able to serve LoRA adapters for a given base model, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response shorter. This is because models are started/warmed up on demand, causing the first response time to be slower, if you are requesting a model that is not often used.

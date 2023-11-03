@@ -1,6 +1,6 @@
 ---
 title: Dynamic Loading of LoRA Adapters on Hugging Face Hub
-thumbnail: /blog/assets/169_load_lora_adapters/thumbnail.png
+thumbnail: /blog/assets/171_load_lora_adapters/thumbnail.png
 authors:
 - user: raphael-gl
 ---
@@ -28,7 +28,7 @@ Instead of fine-tuning by performing tiny changes to all the weights of a model 
 
 <div id="diagram"></div>
 
-![LoRA decomposition](assets/169_load_lora_adapters/lora_diagram.png)
+![LoRA decomposition](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/171_load_lora_adapters/lora_diagram.png)
 
 As an example, in the diagram above the two smaller orange matrices would be kept in the LoRA adapter. Then, later, from the blue base model, you can obtain the adapted yellow one (load the lora adapter), and same in the other direction (unload it).
 
@@ -58,7 +58,7 @@ We implemented LoRA mutualization on the Hugging Face Inference Api. When a requ
 
 On the Hub, LoRA adapters can be identified with two attributes:
 
-![Hub](assets/169_load_lora_adapters/lora_adapter_hub.png)
+![Hub](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/171_load_lora_adapters/lora_adapter_hub.png)
 
 A LoRA adapter will have a ```base_model``` attribute. This is simply the model which the LoRA adapter was built for and should be applied to when performing inference.
 
@@ -227,7 +227,7 @@ TASK=text-to-image
 HF_HUB_ENABLE_HF_TRANSFER=1
 EOF
 
-$docker run --gpus all --rm --name test1 --env-file /tmp/env_file_minimal -p 8888:80 -it test:1.0
+$ docker run --gpus all --rm --name test1 --env-file /tmp/env_file_minimal -p 8888:80 -it test:1.0
 ```
 
 Then in another terminal perform requests to the base model and/or miscellaneous LoRA adapters to be found on the HF Hub.

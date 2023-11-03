@@ -1792,7 +1792,7 @@
     - fine-tuning
     - community
     - dreambooth
-    
+
 - local: mantis-case-study
   title: "Why we’re switching to Hugging Face Inference Endpoints, and maybe you should too"
   author: mattupson
@@ -1991,7 +1991,7 @@
     - rl
     - rlhf
     - nlp
-    
+
 - local: snorkel-case-study
   title: "Snorkel AI x Hugging Face: unlock foundation models for enterprises"
   author: Violette
@@ -2734,7 +2734,7 @@
     - security
 
 - local: codellama
-  title: "Code Llama: Llama 2 learns to code" 
+  title: "Code Llama: Llama 2 learns to code"
   author: philschmid
   thumbnail: /blog/assets/160_codellama/thumbnail.jpg
   date: August 25, 2023
@@ -2860,7 +2860,7 @@
     - guide
     - cv
     - game-dev
-    
+
 - local: rocketmoney-case-study
   title: "Rocket Money x Hugging Face: Scaling Volatile ML Models in Production"
   author: nicokuzak
@@ -2915,7 +2915,7 @@
     - diffusers
     - rl
     - rlhf
-   
+
 - local: ethics-soc-5
   title: "Ethics and Society Newsletter #5: Hugging Face Goes To Washington and Other Summer 2023 Musings"
   author: meg
@@ -2989,7 +2989,7 @@
     - diffusers
     - guide
     - sdxl
-    
+
 - local: the_n_implementation_details_of_rlhf_with_ppo
   title: "The N Implementation Details of RLHF with PPO"
   author: vwxyzjn
@@ -3045,10 +3045,10 @@
     - guide
 
 - local: lora-adapters-dynamic-loading
-  title: "Loading LoRA adapters on the fly to serve inference for all of them at once on the Hugging Face Hub."
+  title: "Dynamic Loading of LoRA Adapters on Hugging Face Hub"
   author: raphael-gl
   thumbnail: /blog/assets/169_load_lora_adapters/thumbnail.png
-  date: November 02, 2023
+  date: November 03, 2023
   tags:
     - diffusers
     - lora

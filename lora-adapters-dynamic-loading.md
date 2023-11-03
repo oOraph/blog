@@ -1,5 +1,5 @@
 ---
-title: Loading LoRA adapters on the fly to serve inference for all of them at once on the Hugging Face Hub.
+title: Dynamic Loading of LoRA Adapters on Hugging Face Hub
 thumbnail: /blog/assets/169_load_lora_adapters/thumbnail.png
 authors:
 - user: raphael-gl

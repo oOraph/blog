@@ -9,7 +9,12 @@ We want to show how one can leverage some features developped in the [Diffusers]
 
 We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.
 
-# How does it work ?
+With these improvements we are able to serve inference for hundreds of distinct LoRA adapters, with less than 5 A10G GPUs, while the user inference requests fall down from 35s to 10
+
+
+# LoRA details
+
+To understand where the mutualization potential lies, we need to get a basic understanding of LoRA.
 
 For a more exhaustive presentation on what LoRA is, please refer to the following blog post:
 
@@ -23,13 +28,25 @@ Instead of fine-tuning by performing tiny changes to all the weights of a model 
 
 ![LoRA decomposition](assets/169_load_lora_adapters/lora_diagram.png)
 
-As an example, in the diagram above the two smaller orange matrices are thewould be kept in the LoRA adapter. Then, later, from the blue base model, you can obtain the adapted yellow one (load the lora adapter), and same in the other direction (unload it).
+As an example, in the diagram above the two smaller orange matrices would be kept in the LoRA adapter. Then, later, from the blue base model, you can obtain the adapted yellow one (load the lora adapter), and same in the other direction (unload it).
 
 In other words, it is like an add-on of a base model that can be added and removed on demand. And because of A and B smaller ranks, it is light relatively to the latter size, and loading it should be faster than loading the whole base model.
 
-If you look, for example at the [Stable Diffusion Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model, that is widely used as a base for many LoRA adapters, you can see that its size on the hub is something like **7GB**
+If you look, for example at the [Stable Diffusion XL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model, that is widely used as a base model for many LoRA adapters, you can see that its size on the hub is something like **7GB**. But now if you look at some LoRA adapter there like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/), you will see that the adapter's size is only **24 MB** !
 
-But now if you look at some LoRA adapter there like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/), you will see that the adapter's size is only **24 MB** !
+There are far less blue base models than there are yellow ones (at least on the Hub). So if we can go quickly from the blue to the yellow one and the other way around, then we have a way serve many distinct yellow models with only a few distinct blue deployments.
+
+
+# How does it benefit to both the user and the service provider ?
+
+On the Hub, in **6 hours**, we approximately have **130** distinct LoRA adapters requested. The vast majority (**~92%**) of them are adapters based on the [Stable Diffusion XL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model. Before this mutualization, this would have meant deploying a dedicated service for all of them (eg. for all the yellow merged matrices in the diagram above), everytime releasing + reserving at least a new GPU. The time to spawn the service and have it ready to serve requests for a specific model is approximately **25s**, then on top of this you have the inference time (**~10s** for a 1024x1024 SDXL inference diffusion with 25 inference steps on an A10G). Then, if an adapter is only occasionally requested, its service gets killed to free resources and gets preempted by others.
+
+So, as a user, if you were requesting for a LoRA adapter that was not so popular, even if it was based on the SDXL model like the vast majority of adapters found on the Hub so far, it would have required **35s** to warm it up and get an answer on the first request (the following ones would have taken the inference time, eg. **10s**).
+
+Now, since all adapters use only a few distinct "blue" base models (like 2 significant ones for diffusion actually), even if your adapter is not so popular, there is a good chance that its "blue" service is already warmed up. In other words, there is a good chance that you avoid the 25s warm up time, even if you do not request your model that often. This is why we said in the introduction that the request time fell down from 35s to 10s.
+
+And in the same time, this requires less GPUs to serve all the distinct models (though we already had some way to share GPUs between deployments to maximize their compute usage). More specifically, in a **2 minutes** time frame, there are approximately **10** distinct LoRA adapters that will be requested. Instead of spawning 10 deployments, and keeping them warm for a few minutes, in case the user would be performing more requests, we just serve all of them with 1 or 2 GPUs (or punctually more if there is a request burst)
+
 
 # Implementation details
 

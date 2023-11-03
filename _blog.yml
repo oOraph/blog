@@ -3045,7 +3045,7 @@
     - guide
 
 - local: lora-adapters-dynamic-loading
-  title: "Dynamic Loading of LoRA Adapters on Hugging Face Hub"
+  title: "Dynamic loading of LoRA Adapters on Hugging Face Hub"
   author: raphael-gl
   thumbnail: /blog/assets/169_load_lora_adapters/thumbnail.png
   date: November 03, 2023

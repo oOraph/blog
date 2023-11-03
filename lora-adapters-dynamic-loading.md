@@ -1,5 +1,5 @@
 ---
-title: Dynamic Loading of LoRA Adapters on Hugging Face Hub
+title: Dynamic loading of LoRA Adapters on Hugging Face Hub
 thumbnail: /blog/assets/171_load_lora_adapters/thumbnail.png
 authors:
 - user: raphael-gl
@@ -245,4 +245,4 @@ $ curl -H 'lora: nerijs/pixel-art-xl' 0:8888 -d '{"inputs": "elephant", "paramet
 
 # Conclusion: benefits for users and hub maintainers
 
-By mutualizing pods on the Inference Api able to serve LoRA adapters for a given base model, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response shorter. This is because models are started/warmed up on demand, causing the first response time to be slower, if you are requesting a model that is not often used.
+By mutualizing pods on the Hub Inference Api serving inference requests of all LoRA adapters for a given base model, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response shorter. This is because models are started/warmed up on demand, causing the first response time to be slower, if you are requesting a model that is not often used.

@@ -9,12 +9,12 @@ We want to show how one can leverage some features developped in the [Diffusers]
 
 We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.
 
-With these improvements we are able to serve inference for hundreds of distinct LoRA adapters, with less than 5 A10G GPUs, while the user inference requests fall down from 35s to 10
+To perform inference on a given model, there are two steps: a warm up phase that consists in downloading the model and setting up the service (25s). And the inference job itself (10s). With these improvements we were able to decrease the warm up time from 25s to 3s. So we were able to serve inference for hundreds of distinct LoRA adapters, with less than 5 A10G GPUs, while the user inference requests fell down from 35s to 13.
 
 
-# LoRA details
+# LoRA
 
-To understand where the mutualization potential lies, we need to get a basic understanding of LoRA.
+To understand where the mutualization potential lies, we need to get a really basic understanding of LoRA.
 
 For a more exhaustive presentation on what LoRA is, please refer to the following blog post:
 
@@ -43,7 +43,7 @@ On the Hub, in **6 hours**, we approximately have **130** distinct LoRA adapters
 
 So, as a user, if you were requesting for a LoRA adapter that was not so popular, even if it was based on the SDXL model like the vast majority of adapters found on the Hub so far, it would have required **35s** to warm it up and get an answer on the first request (the following ones would have taken the inference time, eg. **10s**).
 
-Now, since all adapters use only a few distinct "blue" base models (like 2 significant ones for diffusion actually), even if your adapter is not so popular, there is a good chance that its "blue" service is already warmed up. In other words, there is a good chance that you avoid the 25s warm up time, even if you do not request your model that often. This is why we said in the introduction that the request time fell down from 35s to 10s.
+Now, since all adapters use only a few distinct "blue" base models (like 2 significant ones for diffusion), even if your adapter is not so popular, there is a good chance that its "blue" service is already warmed up. In other words, there is a good chance that you avoid the 25s warm up time, even if you do not request your model that often. The blue model is already downloaded and ready, all we have to do is unload the previous adapter and load the new one, which takes **3s** as we will see [below](#loading-figures). This is why we said in the introduction that the request time fell down from 35s to 13s.
 
 And in the same time, this requires less GPUs to serve all the distinct models (though we already had some way to share GPUs between deployments to maximize their compute usage). More specifically, in a **2 minutes** time frame, there are approximately **10** distinct LoRA adapters that will be requested. Instead of spawning 10 deployments, and keeping them warm for a few minutes, in case the user would be performing more requests, we just serve all of them with 1 or 2 GPUs (or punctually more if there is a request burst)
 
@@ -146,7 +146,7 @@ inference(adapter1, weightname1)
 inference(adapter2, weightname2)
 ```
 
-Results:
+## Loading figures
 
 All numbers below are in seconds
 
@@ -195,7 +195,7 @@ All numbers below are in seconds
 
 So at the cost of 2 to 4 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G GPU, the inference time decreases by a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
 
-# Serving inference requests
+## Serving inference requests
 
 To serve requests, we use the opensource community image [here](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
 

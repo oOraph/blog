@@ -35,7 +35,7 @@ The diagram above shows two smaller orange matrices that are saved as part of th
 
 In other words, the LoRA adapter is like an add-on of a base model that can be added and removed on demand. And because of A and B smaller ranks, it is very light in comparison with the model size. Therefore, loading is much faster than loading the whole base model.
 
-If you look, for example at the [Stable Diffusion XL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model, that is widely used as a base model for many LoRA adapters, you can see that its size on the hub is something like **7GB**. But now if you look at some LoRA adapter there like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/), you will see that the adapter's size is only **24 MB** !
+If you look, for example, inside the [Stable Diffusion XL Base 1.0 model repo](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/tree/main), which is widely used as a base model for many LoRA adapters, you can see that its size is about **7 GB**. However, typical LoRA adapters like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/) take a mere **24 MB** of space !
 
 There are far less blue base models than there are yellow ones (at least on the Hub). So if we can go quickly from the blue to the yellow one and the other way around, then we have a way serve many distinct yellow models with only a few distinct blue deployments.
 

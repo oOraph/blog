@@ -7,19 +7,17 @@ authors:
 
 # Dynamic LoRA loading for better performance and optimized resource usage
 
-We want to show how one can leverage some features developped in the [Diffusers](https://github.com/huggingface/diffusers/) library to serve many distinct LoRA adapters in a dynamic fashion, with a single service.
+We've been able to drastically speed up inference in the Hub for LoRAs based on Diffusion models. This has allowed us save compute resources.
 
-We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.
+To perform inference on a given model, there are two steps:
+1. Warm up phase - that consists in downloading the model and setting up the service (25s).
+2. Then the inference job itself (10s).
 
-When a user requests inference on a given model, the Hub backend needs to perform two steps to complete it:
-- First, during the warmup phase, the model has to be loaded and the inference service set up. This typically takes 25s, unless the model has been used recently and is already available in a serving instance.
-- Then, the inference job itself runs in the backend that was just prepared. This takes about 10s.
+With these improvements, we were able to reduce the warm up time from 25s to 3s. We are able to serve inference for hundreds of distinct LoRAs, with less than 5 A10G GPUs, while user inference requests decreased from 35s to 13s.
 
-By dynamically loading LoRAs, we were able to decrease warmup time from 25s to just 3s, so users see inference time reduced from 35s to 13s. Furthermore, by sharing the same base models to serve hundreds of different LoRA adapters, we are able to support the service with less than 5 A10G GPUs.
-
+Let's talk more about how we can leverage some recent features developed in the [Diffusers](https://github.com/huggingface/diffusers/) library to serve many distinct LoRAs in a dynamic fashion with one single service.
 
 ## LoRA
-
 
 LoRA is a fine-tuning technique that belongs to the family of "parameter-efficient" (PEFT) methods, which try to reduce the number of trainable parameters affected by the fine-tuning process. It increases fine-tuning speed while reducing the size of fine-tuned checkpoints.
 
@@ -35,54 +33,56 @@ The diagram above shows two smaller orange matrices that are saved as part of th
 
 In other words, the LoRA adapter is like an add-on of a base model that can be added and removed on demand. And because of A and B smaller ranks, it is very light in comparison with the model size. Therefore, loading is much faster than loading the whole base model.
 
-If you look, for example, inside the [Stable Diffusion XL Base 1.0 model repo](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/tree/main), which is widely used as a base model for many LoRA adapters, you can see that its size is about **7 GB**. However, typical LoRA adapters like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/) take a mere **24 MB** of space !
+If you look, for example, inside the [Stable Diffusion XL Base 1.0 model repo](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/tree/main), which is widely used as a base model for many LoRA adapters, you can see that its size is around **7 GB**. However, typical LoRA adapters like [this one](https://huggingface.co/minimaxir/sdxl-wrong-lora/) take a mere **24 MB** of space !
 
-There are far less blue base models than there are yellow ones (at least on the Hub). So if we can go quickly from the blue to the yellow one and the other way around, then we have a way serve many distinct yellow models with only a few distinct blue deployments.
+There are far less blue base models than there are yellow ones on the Hub. If we can go quickly from the blue to yellow one and vice versa, then we have a way serve many distinct yellow models with only a few distinct blue deployments.
+
+For a more exhaustive presentation on what LoRA is, please refer to the following blog post:[Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora), or refer directly to the [original paper](https://arxiv.org/abs/2106.09685).
+
+# Benefits
+
+We have approximately **130** distinct LoRAs on the Hub. The vast majority (**~92%**) of them are LoRAs based on the [Stable Diffusion XL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model.
+
+Before this mutualization, this would have meant deploying a dedicated service for all of them (eg. for all the yellow merged matrices in the diagram above); releasing + reserving at least one new GPU. The time to spawn the service and have it ready to serve requests for a specific model is approximately **25s**, then on top of this you have the inference time (**~10s** for a 1024x1024 SDXL inference diffusion with 25 inference steps on an A10G). If an adapter is only occasionally requested, its service gets stopped to free resources preempted by others.
+
+If you were requesting a LoRA that was not so popular, even if it was based on the SDXL model like the vast majority of adapters found on the Hub so far, it would have required **35s** to warm it up and get an answer on the first request (the following ones would have taken the inference time, eg. **10s**).
+
+Now: request time has decreased from 35s to 13s since adapters will use only a few distinct "blue" base models (like 2 significant ones for Diffusion). Even if your adapter is not so popular, there is a good chance that its "blue" service is already warmed up. In other words, there is a good chance that you avoid the 25s warm up time, even if you do not request your model that often. The blue model is already downloaded and ready, all we have to do is unload the previous adapter and load the new one, which takes **3s** as we see [below](#loading-figures).
+
+Overall, this requires less GPUs to serve all distinct models, though we already had some way to share GPUs between deployments to maximize their compute usage). In a **2min** time frame, there are approximately **10** distinct LoRA weights that are requested. Instead of spawning 10 deployments, and keeping them warm, we simply serve all of them with 1 to 2 GPUs (or more if there is a request burst).
 
 
-# How does it benefit to both the user and the service provider ?
+# Implementation
 
-On the Hub, in **6 hours**, we approximately have **130** distinct LoRA adapters requested. The vast majority (**~92%**) of them are adapters based on the [Stable Diffusion XL Base 1.0](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) model. Before this mutualization, this would have meant deploying a dedicated service for all of them (eg. for all the yellow merged matrices in the diagram above), everytime releasing + reserving at least a new GPU. The time to spawn the service and have it ready to serve requests for a specific model is approximately **25s**, then on top of this you have the inference time (**~10s** for a 1024x1024 SDXL inference diffusion with 25 inference steps on an A10G). Then, if an adapter is only occasionally requested, its service gets killed to free resources and gets preempted by others.
+We implemented LoRA mutualization in the Inference API. When a request is performed on a model available in our platform, we first determine whether this is a LoRA or not. We then identify the base model for the LoRA and route the request to a common backend farm, with the ability to serve requests for the said model. Inference requests get served by keeping the base model warm and loading/unloading LoRAs on the fly. This way we can ultimately reuse the same compute resources to serve many distinct models at once.
 
-So, as a user, if you were requesting for a LoRA adapter that was not so popular, even if it was based on the SDXL model like the vast majority of adapters found on the Hub so far, it would have required **35s** to warm it up and get an answer on the first request (the following ones would have taken the inference time, eg. **10s**).
+## LoRA structure
 
-Now, since all adapters use only a few distinct "blue" base models (like 2 significant ones for diffusion), even if your adapter is not so popular, there is a good chance that its "blue" service is already warmed up. In other words, there is a good chance that you avoid the 25s warm up time, even if you do not request your model that often. The blue model is already downloaded and ready, all we have to do is unload the previous adapter and load the new one, which takes **3s** as we will see [below](#loading-figures). This is why we said in the introduction that the request time fell down from 35s to 13s.
-
-And in the same time, this requires less GPUs to serve all the distinct models (though we already had some way to share GPUs between deployments to maximize their compute usage). More specifically, in a **2 minutes** time frame, there are approximately **10** distinct LoRA adapters that will be requested. Instead of spawning 10 deployments, and keeping them warm for a few minutes, in case the user would be performing more requests, we just serve all of them with 1 or 2 GPUs (or punctually more if there is a request burst)
-
-
-# Implementation details
-
-We implemented LoRA mutualization on the Hugging Face Inference Api. When a request is performed on a model available in the platform, we first determine whether this is a LoRA adapter or not. Once done, we identify the base model for this adapter and route the request to a common backend farm, able to serve requests for the said model. Inference requests get served by keeping the base model warm and loading/unloading LoRA adapters on the fly. This way, we can then reuse the same compute resources to serve many distinct models at once.
-
-## LoRA adapters structure on the Hub
-
-On the Hub, LoRA adapters can be identified with two attributes:
+In the Hub, LoRAs can be identified with two attributes:
 
 ![Hub](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/171_load_lora_adapters/lora_adapter_hub.png)
 
-A LoRA adapter will have a ```base_model``` attribute. This is simply the model which the LoRA adapter was built for and should be applied to when performing inference.
+A LoRA will have a ```base_model``` attribute. This is simply the model which the LoRA was built for and should be applied to when performing inference.
 
-And because LoRA adapters are not the only models with such an attribute (any duplicated model have it too), for a LoRA adapter to be properly identified, it also needs a ```lora``` tag.
+Because LoRAs are not the only models with such an attribute (any duplicated model will have one), a LoRA will also need a ```lora``` tag to be properly identified.
 
-So if you want a LoRA adapter to be served as such on the HF Inference Api platform, make sure these attributes are correctly set.
 
-## Loading/Offloading LoRA adapters for Diffusers 🧨
+## Loading/Offloading LoRA for Diffusers 🧨
 
 <div class="alert" style="background-color:lightgreen">
 <p>
-Note that there is a more seemless way to perform the same as what is presented in this section using the <a href="https://github.com/huggingface/peft">peft</a> library. Please refer to <a href="]https://huggingface.co/docs/diffusers/main/en/tutorials/using_peft_for_inference">the documentation</a> for more details. The principle remains the same as below though (going from/to the blue box to/from the yellow one in the <a href="#diagram">diagram</a> above)
+Note that there is a more seemless way to perform the same as what is presented in this section using the <a href="https://github.com/huggingface/peft">peft</a> library. Please refer to <a href="]https://huggingface.co/docs/diffusers/main/en/tutorials/using_peft_for_inference">the documentation</a> for more details. The principle remains the same as below (going from/to the blue box to/from the yellow one in the <a href="#diagram">diagram</a> above)
 </p>
 </div>
 </br>
 
-4 functions are used in the Diffusers lib to load and unload distinct LoRA adapters:
+4 functions are used in the Diffusers library to load and unload distinct LoRA weights:
 
-```load_lora_weights``` and ```fuse_lora``` for loading and merging weights with the main layers. Note that merging weights with the main model before performing inference can decrease the inference time by 30 %.
+```load_lora_weights``` and ```fuse_lora``` for loading and merging weights with the main layers. Note that merging weights with the main model before performing inference can decrease the inference time by 30%.
 
-```unload_lora_weights``` and ```unfuse_lora``` for unloading the adapter.
+```unload_lora_weights``` and ```unfuse_lora``` for unloading.
 
-We provide below an example showing how one can leverage the Diffusers library to quickly load several LoRA adapters on top of a base model
+We provide an example below on how one can leverage the Diffusers library to quickly load several LoRA weights on top of a base model:
 
 ```
 import torch
@@ -158,7 +158,7 @@ inference(adapter2, weightname2)
 
 ## Loading figures
 
-All numbers below are in seconds
+All numbers below are in seconds:
 
 <table>
   <tr>
@@ -203,17 +203,17 @@ All numbers below are in seconds
   </tr>
 </table>
 
-So at the cost of 2 to 4 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G GPU, the inference time decreases a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
+With 2 to 4 additional seconds per inference, we can serve many distinct LoRAs. However, on an A10G GPU, the inference time decreases by a lot while the adapters loading time does not change much, so the LoRA's loading/unloading is relatively more expensive.
 
-## Serving inference requests
+## Serving requests
 
-To serve requests, we use [this open source community image](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
+To serve inference requests, we use [this open source community image](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
 
-You can find the previously described mechanism used in the [TextToImagePipeline](https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/app/pipelines/text_to_image.py) class
+You can find the previously described mechanism used in the [TextToImagePipeline](https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/app/pipelines/text_to_image.py) class.
 
-When a LoRA adapter is requested we look at the one that is loaded, if any, and change it only if required, then we perform inference as usual. This way, with the same service we are able to serve requests for the base model and many distinct adapters.
+When a LoRA is requested, we'll look at the one that is loaded and change it only if required, then we perform inference as usual. This way, we are able to serve requests for the base model and many distinct adapters.
 
-We show below an example on how you can test and request this image
+Below is an example on how you can test and request this image:
 
 ```
 $ git clone https://github.com/huggingface/api-inference-community.git
@@ -244,6 +244,6 @@ $ curl -H 'lora: minimaxir/sdxl-wrong-lora' 0:8888 -d '{"inputs": "elephant", "p
 $ curl -H 'lora: nerijs/pixel-art-xl' 0:8888 -d '{"inputs": "elephant", "parameters": {"num_inference_steps": 20}}' > /tmp/adapter2.jpg
 ```
 
-# Conclusion: benefits for users and hub maintainers
+# Conclusion: Time!
 
-By mutualizing pods on the Hub Inference Api serving inference requests of all LoRA adapters for a given base model, we were able to save compute resources while improving the user experience in the same time. Indeed, despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running made the whole inference time response shorter. This is because models are started/warmed up on demand, causing the first response time to be slower, if you are requesting a model that is not often used.
+By mutualizing pods in the Inference API serving requests of all LoRA weights for a given base model, we are able to save compute resources and improve the user experience in parallel. Despite the extra time added by the process of unloading the previously loaded adapter and loading the one we're interested in, the fact that the serving process is most often already up and running makes the inference time response on the whole much shorter.

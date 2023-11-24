@@ -31,7 +31,7 @@ The LoRA name (Low Rank Adaptation) comes from the small matrices we mentioned. 
 
 ![LoRA decomposition](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/171_load_lora_adapters/lora_diagram.png)
 
-As an example, in the diagram above the two smaller orange matrices would be kept in the LoRA adapter. Then, later, from the blue base model, you can obtain the adapted yellow one (load the lora adapter), and same in the other direction (unload it).
+The diagram above shows two smaller orange matrices that are saved as part of the LoRA adapter. We can later load the LoRA adapter and merge it with the blue base model to obtain the fine-tuned model. Crucially, _unloading_ the adapter is also possible so we can revert back to the original base model at any point.
 
 In other words, it is like an add-on of a base model that can be added and removed on demand. And because of A and B smaller ranks, it is light relatively to the latter size, and loading it should be faster than loading the whole base model.
 

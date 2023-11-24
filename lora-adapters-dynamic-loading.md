@@ -208,7 +208,7 @@ All numbers below are in seconds
   </tr>
 </table>
 
-So at the cost of 2 to 4 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G GPU, the inference time decreases by a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
+So at the cost of 2 to 4 additional seconds per inference, we can serve many distinct adapters. Note however that on an A10G GPU, the inference time decreases a lot while the adapters loading time does not change that much, so the LoRA adapters loading/unloading is relatively more expensive.
 
 ## Serving inference requests
 

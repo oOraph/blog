@@ -1,11 +1,11 @@
 ---
-title: Dynamic loading of LoRA Adapters on Hugging Face Hub
+title: Dynamic LoRA loading for better performance and optimized resource usage
 thumbnail: /blog/assets/171_load_lora_adapters/thumbnail.png
 authors:
 - user: raphael-gl
 ---
 
-# Dynamic loading of LoRA Adapters on Hugging Face Hub
+# Dynamic LoRA loading for better performance and optimized resource usage
 
 We want to show how one can leverage some features developped in the [Diffusers](https://github.com/huggingface/diffusers/) library to serve many distinct LoRA adapters in a dynamic fashion, with a single service.
 
@@ -17,6 +17,11 @@ When a user requests inference on a given model, the Hub backend needs to perfor
 
 By dynamically loading LoRAs, we were able to decrease warmup time from 25s to just 3s, so users see inference time reduced from 35s to 13s. Furthermore, by sharing the same base models to serve hundreds of different LoRA adapters, we are able to support the service with less than 5 A10G GPUs.
 
+To understand where the mutualization potential lies, we need to get a really basic understanding of LoRA. For a more exhaustive presentation on what LoRA is, please refer to the following blog post:
+
+[Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora)
+
+Or refer directly to the [original paper](https://arxiv.org/abs/2106.09685).
 
 ## LoRA
 

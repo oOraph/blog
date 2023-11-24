@@ -212,7 +212,7 @@ So at the cost of 2 to 4 additional seconds per inference, we can serve many dis
 
 ## Serving inference requests
 
-To serve requests, we use the opensource community image [here](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
+To serve requests, we use [this open source community image](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers)
 
 You can find the previously described mechanism used in the [TextToImagePipeline](https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/app/pipelines/text_to_image.py) class
 

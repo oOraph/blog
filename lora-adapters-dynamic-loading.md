@@ -20,13 +20,6 @@ By dynamically loading LoRAs, we were able to decrease warmup time from 25s to j
 
 ## LoRA
 
-To understand where the mutualization potential lies, we need to get a really basic understanding of LoRA.
-
-For a more exhaustive presentation on what LoRA is, please refer to the following blog post:
-
-[Using LoRA for Efficient Stable Diffusion Fine-Tuning](https://huggingface.co/blog/lora)
-
-Or refer directly to the [original paper](https://arxiv.org/abs/2106.09685).
 
 LoRA is one of the many existing fine-tuning techniques.
 

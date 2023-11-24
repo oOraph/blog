@@ -5,6 +5,8 @@ authors:
 - user: raphael-gl
 ---
 
+# Dynamic loading of LoRA Adapters on Hugging Face Hub
+
 We want to show how one can leverage some features developped in the [Diffusers](https://github.com/huggingface/diffusers/) library to serve many distinct LoRA adapters in a dynamic fashion, with a single service.
 
 We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.

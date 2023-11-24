@@ -18,7 +18,7 @@ When a user requests inference on a given model, the Hub backend needs to perfor
 By dynamically loading LoRAs, we were able to decrease warmup time from 25s to just 3s, so users see inference time reduced from 35s to 13s. Furthermore, by sharing the same base models to serve hundreds of different LoRA adapters, we are able to support the service with less than 5 A10G GPUs.
 
 
-# LoRA
+## LoRA
 
 To understand where the mutualization potential lies, we need to get a really basic understanding of LoRA.
 

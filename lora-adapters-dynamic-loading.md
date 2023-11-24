@@ -21,9 +21,11 @@ By dynamically loading LoRAs, we were able to decrease warmup time from 25s to j
 ## LoRA
 
 
-LoRA is one of the many existing fine-tuning techniques.
+LoRA is a fine-tuning technique that belongs to the family of "parameter-efficient" (PEFT) methods, which try to reduce the number of trainable parameters affected by the fine-tuning process. It increases fine-tuning speed while reducing the size of fine-tuned checkpoints.
 
-Instead of fine-tuning by performing tiny changes to all the weights of a model checkpoint, we train it by freezing most of its layers and only tuning a few specific ones in the attention blocks. Besides, the weights in these layers are not tuned independently from one another: they are tuned by adding to the original values the result of the product between two smaller matrices (hence the name, LoRA for Lower Rank Adaptation). These matrices are extracted and kept aside, for a later "transplantation"/reload. This trainable weights compose the LoRA adapter.
+Instead of fine-tuning the model by performing tiny changes to all its weights, we freeze most of the layers and only train a few specific ones in the attention blocks. Furthermore, we avoid touching the parameters of those layers by using small matrices that are added to the original weights. Those small matrices are the ones whose weights are updated during the fine-tuning process, and then saved to disk. This means that all of the model original parameters are preserved, and we can load the LoRA weights on top using an adaptation method.
+
+The LoRA name (Low Rank Adaptation) comes from the small matrices we mentioned. For more information about the method, please refer to [this post](https://huggingface.co/blog/lora) or the [original paper](https://arxiv.org/abs/2106.09685).
 
 <div id="diagram"></div>
 

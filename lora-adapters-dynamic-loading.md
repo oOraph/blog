@@ -11,7 +11,11 @@ We want to show how one can leverage some features developped in the [Diffusers]
 
 We used these features to speed up inference on the Hub for requests related to LoRA adapters based on Diffusion models. In addition to this UX upgrade, this allowed us to mutualize and thus spare compute resources.
 
-To perform inference on a given model, there are two steps: a warm up phase that consists in downloading the model and setting up the service (25s). And the inference job itself (10s). With these improvements we were able to decrease the warm up time from 25s to 3s. So we were able to serve inference for hundreds of distinct LoRA adapters, with less than 5 A10G GPUs, while the user inference requests fell down from 35s to 13.
+When a user requests inference on a given model, the Hub backend needs to perform two steps to complete it:
+- First, during the warmup phase, the model has to be loaded and the inference service set up. This typically takes 25s, unless the model has been used recently and is already available in a serving instance.
+- Then, the inference job itself runs in the backend that was just prepared. This takes about 10s.
+
+By dynamically loading LoRAs, we were able to decrease warmup time from 25s to just 3s, so users see inference time reduced from 35s to 13s. Furthermore, by sharing the same base models to serve hundreds of different LoRA adapters, we are able to support the service with less than 5 A10G GPUs.
 
 
 # LoRA
